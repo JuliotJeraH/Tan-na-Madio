@@ -1,0 +1,23 @@
+{
+  "name": "tanana-madio-backend",
+  "version": "1.0.0",
+  "description": "Backend for Tanàna Madio",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "node tests/algorithms.test.js && node tests/auth.test.js && node tests/signalement.test.js && node tests/collecte.test.js && node tests/db.test.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.0",
+    "dotenv": "^17.4.2",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  },
+  "type": "commonjs"
+}
