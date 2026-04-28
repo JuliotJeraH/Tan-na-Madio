@@ -127,3 +127,15 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.getAgentSignalements = async (req, res) => {
+  try {
+    if (req.user.role !== 'agent') {
+      return res.status(403).json({ error: 'Accès réservé aux agents' });
+    }
+    // TODO: Implement logic to fetch signalements for the agent
+    res.json({ message: 'Signalements de l\'agent' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

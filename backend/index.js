@@ -15,7 +15,7 @@ const collecteRoutes = require('./src/routes/collectes');
 const statsRoutes = require('./src/routes/stats');
 
 // Import de la connexion DB
-const { sequelize } = require('./src/models');
+const { testConnection } = require('./src/config/db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -64,20 +64,6 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error(err.stack);
   
-  if (err.name === 'SequelizeValidationError') {
-    return res.status(400).json({
-      error: 'Erreur de validation',
-      details: err.errors.map(e => e.message)
-    });
-  }
-  
-  if (err.name === 'SequelizeUniqueConstraintError') {
-    return res.status(409).json({
-      error: 'Conflit de données',
-      details: err.errors.map(e => e.message)
-    });
-  }
-  
   res.status(500).json({
     error: 'Erreur interne du serveur',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
@@ -87,15 +73,8 @@ app.use((err, req, res, next) => {
 // ========== Démarrage du serveur ==========
 const startServer = async () => {
   try {
-    // Synchronisation avec la base de données
-    await sequelize.authenticate();
-    console.log('✅ Connexion à la base de données établie');
-    
-    // Synchroniser les modèles (créer les tables si elles n'existent pas)
-    if (process.env.NODE_ENV === 'development') {
-      await sequelize.sync({ alter: true });
-      console.log('📦 Modèles synchronisés');
-    }
+    // Test de connexion à la base de données
+    await testConnection();
     
     app.listen(PORT, () => {
       console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);

@@ -1,99 +1,82 @@
-// backend/src/controllers/collecteController.js
+// backend/src/controllers/collecteController.js (version simplifiée utilisant le service)
+const {
+  planifierCollecteComplete,
+  planifierCollecteGlouton,
+  demarrerCollecte,
+  terminerCollecteComplete,
+  annulerCollecte,
+  getCollecteDetails,
+  getCollectesByAgent
+} = require('../services/collecteService');
 const Collecte = require('../models/Collecte');
-const Camion = require('../models/Camion');
-const Signalement = require('../models/Signalement');
 
+// Planifier avec Dijkstra (optimal)
 exports.planifierCollecte = async (req, res) => {
   try {
     if (req.user.role !== 'administrateur') {
       return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
     }
 
-    const { camion_id, agent_id, zone_id, date_planifiee, signalement_ids } = req.body;
+    const { zone_id, camion_id, agent_id, date_planifiee, signalement_ids, algorithme = 'dijkstra' } = req.body;
 
-    const camion = await Camion.findById(camion_id);
-    if (!camion || camion.statut !== 'disponible') {
-      return res.status(400).json({ error: 'Camion non disponible' });
+    let collecte;
+    if (algorithme === 'glouton') {
+      collecte = await planifierCollecteGlouton({ zone_id, camion_id, agent_id, date_planifiee });
+    } else {
+      collecte = await planifierCollecteComplete({ zone_id, camion_id, agent_id, date_planifiee, signalement_ids });
     }
 
-    const collecte = await Collecte.create({
-      camion_id, agent_id, zone_id, date_planifiee, signalement_ids
+    res.status(201).json({
+      message: 'Collecte planifiée avec succès',
+      collecte
     });
-
-    await Camion.updateStatut(camion_id, 'en_tournee');
-
-    res.status(201).json({ message: 'Collecte planifiée', collecte });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
 
+// Démarrer une collecte
 exports.demarrerCollecte = async (req, res) => {
   try {
     const { id } = req.params;
-    const collecte = await Collecte.findById(id);
-
-    if (!collecte) {
-      return res.status(404).json({ error: 'Collecte non trouvée' });
-    }
-
-    if (collecte.agent_id !== req.user.id && req.user.role !== 'administrateur') {
-      return res.status(403).json({ error: 'Vous n\'êtes pas assigné à cette collecte' });
-    }
-
-    const updated = await Collecte.demarrer(id);
-    res.json({ message: 'Collecte démarrée', collecte: updated });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-exports.terminerCollecte = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { poids_collecte_kg, distance_km, notes } = req.body;
-
-    const collecte = await Collecte.findById(id);
-    if (!collecte) {
-      return res.status(404).json({ error: 'Collecte non trouvée' });
-    }
-
-    if (collecte.agent_id !== req.user.id && req.user.role !== 'administrateur') {
-      return res.status(403).json({ error: 'Vous n\'êtes pas assigné à cette collecte' });
-    }
-
-    const updated = await Collecte.terminer(id, { poids_collecte_kg, distance_km, notes });
-    await Camion.updateStatut(collecte.camion_id, 'disponible');
-
-    res.json({ message: 'Collecte terminée', collecte: updated });
+    const collecte = await demarrerCollecte(id, req.user.id);
+    res.json({ message: 'Collecte démarrée', collecte });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
 
-exports.getAllCollectes = async (req, res) => {
+// Terminer une collecte
+exports.terminerCollecte = async (req, res) => {
   try {
-    const { statut, zone_id, debut, fin, limit, offset } = req.query;
-    const collectes = await Collecte.findAll({ statut, zone_id, debut, fin, limit, offset });
-    res.json(collectes);
+    const { id } = req.params;
+    const { poids_collectee, notes } = req.body;
+    const collecte = await terminerCollecteComplete(id, req.user.id, poids_collectee, notes);
+    res.json({ message: 'Collecte terminée', collecte });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(400).json({ error: error.message });
   }
 };
 
-exports.getMyCollectes = async (req, res) => {
+// Annuler une collecte
+exports.annulerCollecte = async (req, res) => {
   try {
-    const collectes = await Collecte.findByAgent(req.user.id);
-    res.json(collectes);
+    if (req.user.role !== 'administrateur') {
+      return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
+    }
+    const { id } = req.params;
+    const collecte = await annulerCollecte(id);
+    res.json({ message: 'Collecte annulée', collecte });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(400).json({ error: error.message });
   }
 };
 
+// Obtenir les détails d'une collecte
 exports.getCollecteById = async (req, res) => {
   try {
     const { id } = req.params;
-    const collecte = await Collecte.findById(id);
+    const collecte = await getCollecteDetails(id);
     if (!collecte) {
       return res.status(404).json({ error: 'Collecte non trouvée' });
     }
@@ -103,26 +86,23 @@ exports.getCollecteById = async (req, res) => {
   }
 };
 
-exports.annulerCollecte = async (req, res) => {
+// Obtenir les collectes de l'agent connecté
+exports.getMyCollectes = async (req, res) => {
   try {
-    if (req.user.role !== 'administrateur') {
-      return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
-    }
+    const { limit = 50, offset = 0 } = req.query;
+    const collectes = await getCollectesByAgent(req.user.id, limit, offset);
+    res.json(collectes);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
-    const { id } = req.params;
-    const collecte = await Collecte.findById(id);
-
-    if (!collecte) {
-      return res.status(404).json({ error: 'Collecte non trouvée' });
-    }
-
-    const updated = await Collecte.annuler(id);
-
-    if (collecte.camion_id) {
-      await Camion.updateStatut(collecte.camion_id, 'disponible');
-    }
-
-    res.json({ message: 'Collecte annulée', collecte: updated });
+// Lister toutes les collectes (admin/agent)
+exports.getAllCollectes = async (req, res) => {
+  try {
+    const { statut, zone_id, debut, fin, limit = 100, offset = 0 } = req.query;
+    const collectes = await Collecte.findAll({ statut, zone_id, debut, fin, limit, offset });
+    res.json(collectes);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

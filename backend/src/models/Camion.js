@@ -4,9 +4,9 @@ const { query } = require('../config/db');
 class Camion {
   static async findAll() {
     const result = await query(`
-      SELECT c.*, ch.nom as chauffeur_nom, ch.prenom as chauffeur_prenom
+      SELECT c.*, u.nom as chauffeur_nom, u.prenom as chauffeur_prenom
       FROM camions c
-      LEFT JOIN chauffeurs ch ON ch.camion_id = c.id
+      LEFT JOIN utilisateurs u ON u.id = c.chauffeur_id
       ORDER BY c.created_at DESC
     `);
     return result.rows;
@@ -14,9 +14,9 @@ class Camion {
 
   static async findById(id) {
     const result = await query(`
-      SELECT c.*, ch.nom as chauffeur_nom, ch.prenom as chauffeur_prenom
+      SELECT c.*, u.nom as chauffeur_nom, u.prenom as chauffeur_prenom
       FROM camions c
-      LEFT JOIN chauffeurs ch ON ch.camion_id = c.id
+      LEFT JOIN utilisateurs u ON u.id = c.chauffeur_id
       WHERE c.id = $1
     `, [id]);
     return result.rows[0];
