@@ -1,3 +1,46 @@
+# backend/.gitignore
+
+# Dépendances
 node_modules/
+package-lock.json
+
+# Variables d'environnement
 .env
-uploads/
+.env.local
+.env.production
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Base de données
+*.sqlite
+*.db
+
+# Uploads (contenu, mais garder le dossier)
+uploads/*
+!uploads/.gitkeep
+
+# Fichiers temporaires
+tmp/
+temp/
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tests
+coverage/
+.nyc_output/
+
+# Build
+dist/
+build/

@@ -1,23 +1,43 @@
 {
   "name": "tanana-madio-backend",
   "version": "1.0.0",
-  "description": "Backend for Tanàna Madio",
-  "main": "src/server.js",
+  "description": "Système Numérique de Gestion des Déchets Urbains",
+  "main": "index.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "test": "node tests/algorithms.test.js && node tests/auth.test.js && node tests/signalement.test.js && node tests/collecte.test.js && node tests/db.test.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "db:sync": "node scripts/syncDb.js",
+    "db:seed": "node scripts/seedDb.js",
+    "db:reset": "npm run db:sync && npm run db:seed"
   },
   "dependencies": {
-    "bcrypt": "^5.1.0",
-    "dotenv": "^17.4.2",
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "jsonwebtoken": "^9.0.0",
+    "helmet": "^7.1.0",
+    "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "pg": "^8.20.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "supertest": "^6.3.3"
   },
-  "type": "commonjs"
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "waste-management",
+    "urban",
+    "madagascar",
+    "tanana-madio"
+  ],
+  "author": "",
+  "license": "MIT"
 }
