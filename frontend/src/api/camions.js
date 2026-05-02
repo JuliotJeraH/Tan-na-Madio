@@ -1,10 +1,13 @@
 import api from './axiosConfig'
 
 export const camionAPI = {
-  list: (filters) => api.get('/camions', { params: filters }),
+  list: (params) => api.get('/camions', { params }),
   getById: (id) => api.get(`/camions/${id}`),
-  updateLocation: (id, location) => api.patch(`/camions/${id}/location`, location),
-  getRoute: (camionId) => api.get(`/camions/${camionId}/route`),
+  create: (data) => api.post('/camions', data),
+  update: (id, data) => api.put(`/camions/${id}`, data),
+  delete: (id) => api.delete(`/camions/${id}`),
+  updateLocation: (id, location) => api.put(`/camions/${id}/location`, location),
+  getDisponibles: () => api.get('/camions/disponibles'),
 }
 
 export default camionAPI

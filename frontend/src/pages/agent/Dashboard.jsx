@@ -1,183 +1,120 @@
 import React, { useState, useEffect } from 'react'
+import { AlertCircle, Clock, CheckCircle, Truck } from 'lucide-react'
+import { signalementAPI } from '../../api/signalements'
+import { collecteAPI } from '../../api/collectes'
+import StatCard from '../../components/common/StatCard'
+import Badge from '../../components/common/Badge'
+import Spinner from '../../components/common/Spinner'
+import Button from '../../components/common/Button'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle, Clock, AlertCircle, Eye } from 'lucide-react'
-import { signalementAPI, statsAPI } from '../../services/api'
-import { Button, Card, CardBody, CardHeader, Badge, StatCard, LoadingState, ErrorState } from '../../components/common'
 
 const AgentDashboard = () => {
-  const [signalements, setSignalements] = useState([])
   const [stats, setStats] = useState(null)
+  const [signalements, setSignalements] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [filter, setFilter] = useState('pending')
   const navigate = useNavigate()
 
   useEffect(() => {
-    Promise.all([
-      fetchSignalements(),
-      fetchStats(),
-    ]).catch(() => {
-      setError('Erreur lors du chargement des données')
-    })
-  }, [filter])
+    fetchData()
+  }, [])
 
-  const fetchSignalements = async () => {
+  const fetchData = async () => {
     try {
-      const response = await signalementAPI.list({ status: filter })
-      setSignalements(response.data)
-    } catch (err) {
-      console.error('Error fetching signalements:', err)
-      throw err
+      const [signalementsRes, collectesRes] = await Promise.all([
+        signalementAPI.list({ statut: 'en_attente' }),
+        collecteAPI.list({ statut: 'planifiee' })
+      ])
+      setSignalements(signalementsRes.data)
+      setStats({
+        enAttente: signalementsRes.data.length,
+        collectesPlanifiees: collectesRes.data.length,
+      })
+    } catch (error) {
+      console.error('Error fetching data:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const fetchStats = async () => {
+  const handleValider = async (id) => {
     try {
-      const response = await statsAPI.getDashboard()
-      setStats(response.data)
-    } catch (err) {
-      console.error('Error fetching stats:', err)
-      throw err
+      await signalementAPI.valider(id)
+      fetchData()
+    } catch (error) {
+      console.error('Error validating signalement:', error)
     }
   }
 
-  const handleApprove = async (id) => {
-    try {
-      await signalementAPI.update(id, { status: 'approved' })
-      fetchSignalements()
-    } catch (err) {
-      console.error('Error approving signalement:', err)
-    }
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Spinner size="lg" />
+      </div>
+    )
   }
-
-  const handleReject = async (id) => {
-    try {
-      await signalementAPI.update(id, { status: 'rejected' })
-      fetchSignalements()
-    } catch (err) {
-      console.error('Error rejecting signalement:', err)
-    }
-  }
-
-  if (loading) return <LoadingState message="Chargement du tableau de bord..." />
-  if (error) return <ErrorState message={error} onRetry={() => window.location.reload()} />
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-accent-900">Tableau de Bord Agent</h1>
-        <p className="text-accent-600 mt-2">Validez et gérez les signalements de déchets</p>
+      <div>
+        <h1 className="text-2xl font-bold text-accent-900">Tableau de Bord Agent</h1>
+        <p className="text-accent-500 mt-1">Validez et gérez les signalements</p>
       </div>
 
       {/* Stats */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <StatCard
-            title="Signalements à traiter"
-            value={stats.pendingCount || 0}
-            icon={Clock}
-            color="warning"
-          />
-          <StatCard
-            title="Validés ce mois"
-            value={stats.approvedThisMonth || 0}
-            icon={CheckCircle}
-            color="success"
-            change="+12% vs mois dernier"
-          />
-          <StatCard
-            title="En cours de collecte"
-            value={stats.inProgressCount || 0}
-            icon={AlertCircle}
-            color="info"
-          />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <StatCard title="Signalements en attente" value={stats?.enAttente || 0} icon={AlertCircle} color="warning" />
+        <StatCard title="Collectes planifiées" value={stats?.collectesPlanifiees || 0} icon={Clock} color="info" />
+        <StatCard title="Validés ce mois" value="24" icon={CheckCircle} color="success" change="+8" />
+      </div>
+
+      {/* Signalements à valider */}
+      <div className="bg-white rounded-xl border border-accent-200">
+        <div className="px-6 py-4 border-b border-accent-200 flex justify-between items-center">
+          <h3 className="font-semibold text-accent-900">Signalements à valider</h3>
+          <Button variant="outline" size="sm" onClick={() => navigate('/agent/signalements')}>
+            Voir tous
+          </Button>
         </div>
-      )}
-
-      {/* Signalements Section */}
-      <Card>
-        <CardHeader>
-          <h2 className="font-semibold text-lg text-accent-900">Signalements à Valider</h2>
-        </CardHeader>
-        <CardBody>
-          {/* Filter */}
-          <div className="mb-6 flex flex-wrap gap-2">
-            {['pending', 'approved', 'rejected'].map((status) => (
-              <button
-                key={status}
-                onClick={() => setFilter(status)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  filter === status
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-accent-100 text-accent-700 hover:bg-accent-200'
-                }`}
-              >
-                {status === 'pending' && 'En attente'}
-                {status === 'approved' && 'Approuvés'}
-                {status === 'rejected' && 'Rejetés'}
-              </button>
-            ))}
-          </div>
-
-          {/* List */}
-          {signalements.length === 0 ? (
-            <p className="text-center text-accent-600 py-8">Aucun signalement trouvé</p>
-          ) : (
-            <div className="space-y-4">
-              {signalements.map((signalement) => (
-                <div
-                  key={signalement.id}
-                  className="border border-accent-200 rounded-lg p-4 hover:bg-accent-50 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-accent-900">{signalement.description}</h3>
-                        <Badge variant="info">{signalement.category}</Badge>
-                      </div>
-                      <p className="text-sm text-accent-600 mb-3">
-                        Signalé par {signalement.citizen?.name} le{' '}
-                        {new Date(signalement.createdAt).toLocaleDateString('fr-FR')}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      {filter === 'pending' && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleApprove(signalement.id)}
-                            className="text-green-600 border-green-200"
-                          >
-                            Valider
-                          </Button>
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            onClick={() => handleReject(signalement.id)}
-                          >
-                            Rejeter
-                          </Button>
-                        </>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/agent/signalements/${signalement.id}`)}
-                        className="gap-2"
-                      >
-                        <Eye className="w-4 h-4" />
-                        Détails
-                      </Button>
-                    </div>
-                  </div>
+        <div className="divide-y divide-accent-100">
+          {signalements.slice(0, 5).map((signal) => (
+            <div key={signal.id} className="px-6 py-4 flex items-center justify-between">
+              <div className="flex-1">
+                <p className="font-medium text-accent-900">{signal.description?.substring(0, 60)}...</p>
+                <p className="text-sm text-accent-400 mt-1">{signal.adresse}</p>
+                <div className="flex gap-2 mt-2">
+                  <Badge variant={signal.urgence === 'critique' ? 'danger' : signal.urgence === 'eleve' ? 'warning' : 'info'}>
+                    {signal.urgence}
+                  </Badge>
                 </div>
-              ))}
+              </div>
+              <div className="flex gap-2 ml-4">
+                <Button size="sm" onClick={() => handleValider(signal.id)}>Valider</Button>
+                <Button size="sm" variant="outline">Détails</Button>
+              </div>
+            </div>
+          ))}
+          {signalements.length === 0 && (
+            <div className="px-6 py-8 text-center text-accent-400">
+              Aucun signalement en attente
             </div>
           )}
-        </CardBody>
-      </Card>
+        </div>
+      </div>
+
+      {/* Actions rapides */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="bg-white rounded-xl border border-accent-200 p-5">
+          <h3 className="font-semibold text-accent-900 mb-2">Planifier une collecte</h3>
+          <p className="text-sm text-accent-500 mb-4">Organisez une nouvelle tournée de collecte</p>
+          <Button onClick={() => navigate('/agent/planifier')}>Planifier</Button>
+        </div>
+        <div className="bg-white rounded-xl border border-accent-200 p-5">
+          <h3 className="font-semibold text-accent-900 mb-2">Voir les collectes</h3>
+          <p className="text-sm text-accent-500 mb-4">Suivez l'état des collectes en cours</p>
+          <Button variant="outline" onClick={() => navigate('/agent/collectes')}>Voir les collectes</Button>
+        </div>
+      </div>
     </div>
   )
 }

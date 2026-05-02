@@ -1,20 +1,24 @@
 import React from 'react'
 import { Navigate } from 'react-router-dom'
-import { useAuth } from '../../context/AuthContext'
-import { LoadingState } from '../common'
+import { useAuth } from '../../hooks/useAuth'
+import Spinner from '../common/Spinner'
 
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
-  const { isAuthenticated, user, loading } = useAuth()
+  const { user, isLoading } = useAuth()
 
-  if (loading) {
-    return <LoadingState message="Vérification des permissions..." />
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    )
   }
 
-  if (!isAuthenticated) {
+  if (!user) {
     return <Navigate to="/login" replace />
   }
 
-  if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
     return <Navigate to="/" replace />
   }
 

@@ -2,9 +2,11 @@ import api from './axiosConfig'
 
 export const statsAPI = {
   getDashboard: () => api.get('/stats/dashboard'),
-  getSignalements: (period) => api.get(`/stats/signalements?period=${period}`),
-  getCollectes: (period) => api.get(`/stats/collectes?period=${period}`),
-  getEfficiency: () => api.get('/stats/efficiency'),
+  getSignalementsParZone: () => api.get('/stats/signalements/par-zone'),
+  getSignalementsEvolution: (jours) => api.get(`/stats/signalements/evolution?jours=${jours}`),
+  getAgentsPerformance: () => api.get('/stats/agents/performance'),
+  getCamionsOccupation: () => api.get('/stats/camions/occupation'),
+  getTraitementMoyen: () => api.get('/stats/traitement-moyen'),
 }
 
 export default statsAPI

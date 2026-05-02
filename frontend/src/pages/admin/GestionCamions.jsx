@@ -1,62 +1,93 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
+import { Plus, Edit2, Trash2, MapPin } from 'lucide-react'
 import { useCamions } from '../../hooks/useCamions'
-import { Card, Badge, Button, LoadingState, Modal } from '../../components/common'
-import { motion } from 'framer-motion'
-import { Edit2, Trash2, Plus } from 'lucide-react'
+import Button from '../../components/common/Button'
+import Badge from '../../components/common/Badge'
+import Spinner from '../../components/common/Spinner'
+import Modal from '../../components/common/Modal'
+import FormulaireCamion from '../../components/forms/FormulaireCamion'
 
-export default function GestionCamions() {
-  const { camions, loading } = useCamions()
+const GestionCamions = () => {
+  const { camions, loading, refetch } = useCamions()
   const [showModal, setShowModal] = useState(false)
+  const [selectedCamion, setSelectedCamion] = useState(null)
 
-  if (loading) return <LoadingState message="Chargement des camions..." />
+  const handleEdit = (camion) => {
+    setSelectedCamion(camion)
+    setShowModal(true)
+  }
+
+  const handleAdd = () => {
+    setSelectedCamion(null)
+    setShowModal(true)
+  }
+
+  const handleCloseModal = () => {
+    setShowModal(false)
+    setSelectedCamion(null)
+    refetch()
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Spinner size="lg" />
+      </div>
+    )
+  }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="p-6"
-    >
-      <div className="flex justify-between items-start mb-8">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestion des Camions</h1>
-          <p className="text-gray-600">Gérez la flotte de collecte</p>
+          <h1 className="text-2xl font-bold text-accent-900">Gestion des Camions</h1>
+          <p className="text-accent-500 mt-1">Gérez la flotte de collecte</p>
         </div>
-        <Button onClick={() => setShowModal(true)}>
+        <Button onClick={handleAdd}>
           <Plus className="w-4 h-4 mr-2" />
           Ajouter un camion
         </Button>
       </div>
 
       {/* Tableau */}
-      <Card>
+      <div className="bg-white rounded-xl border border-accent-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Immatriculation</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Marque</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Capacité</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Statut</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
+            <thead className="bg-accent-50 border-b border-accent-200">
+              <tr>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-accent-900">Immatriculation</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-accent-900">Modèle</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-accent-900">Capacité (kg)</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-accent-900">Statut</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-accent-900">Chauffeur</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-accent-900">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-accent-100">
               {camions.map((camion) => (
-                <tr key={camion.id} className="border-b border-gray-200 hover:bg-gray-50 transition">
-                  <td className="px-6 py-4 font-semibold text-gray-900">{camion.immatriculation}</td>
-                  <td className="px-6 py-4 text-gray-600">{camion.marque} {camion.modele}</td>
-                  <td className="px-6 py-4 text-gray-600">{camion.capacite} kg</td>
+                <tr key={camion.id} className="hover:bg-accent-50 transition-colors">
+                  <td className="px-6 py-4 font-medium text-accent-900">{camion.immatriculation}</td>
+                  <td className="px-6 py-4 text-accent-600">{camion.modele || '-'}</td>
+                  <td className="px-6 py-4 text-accent-600">{camion.capacite_kg}</td>
                   <td className="px-6 py-4">
-                    <Badge>{camion.statut_disponibilite}</Badge>
+                    <Badge variant={
+                      camion.statut === 'disponible' ? 'success' :
+                      camion.statut === 'en_tournee' ? 'info' :
+                      camion.statut === 'en_maintenance' ? 'warning' : 'danger'
+                    }>
+                      {camion.statut}
+                    </Badge>
                   </td>
+                  <td className="px-6 py-4 text-accent-600">{camion.chauffeur?.nom || '-'}</td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="sm">
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="text-red-500">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <button onClick={() => handleEdit(camion)} className="p-1 hover:bg-accent-100 rounded-lg transition-colors">
+                        <Edit2 className="w-4 h-4 text-accent-500" />
+                      </button>
+                      <button className="p-1 hover:bg-red-100 rounded-lg transition-colors">
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -64,36 +95,19 @@ export default function GestionCamions() {
             </tbody>
           </table>
         </div>
-      </Card>
-
-      {/* Modal Ajouter */}
-      {showModal && (
-        <Modal title="Ajouter un camion" onClose={() => setShowModal(false)}>
-          <div className="space-y-4">
-            <input 
-              type="text"
-              placeholder="Immatriculation"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-            />
-            <input 
-              type="text"
-              placeholder="Marque"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-            />
-            <input 
-              type="number"
-              placeholder="Capacité (kg)"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-            />
-            <div className="flex gap-2 pt-4">
-              <Button variant="primary" className="flex-1">Ajouter</Button>
-              <Button variant="secondary" className="flex-1" onClick={() => setShowModal(false)}>
-                Annuler
-              </Button>
-            </div>
+        {camions.length === 0 && (
+          <div className="text-center py-12 text-accent-400">
+            Aucun camion enregistré
           </div>
-        </Modal>
-      )}
-    </motion.div>
+        )}
+      </div>
+
+      {/* Modal Formulaire */}
+      <Modal isOpen={showModal} onClose={handleCloseModal} title={selectedCamion ? 'Modifier le camion' : 'Ajouter un camion'}>
+        <FormulaireCamion camion={selectedCamion} onSuccess={handleCloseModal} onCancel={handleCloseModal} />
+      </Modal>
+    </div>
   )
 }
+
+export default GestionCamions

@@ -19,33 +19,38 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md', footer = null })
     md: 'max-w-lg',
     lg: 'max-w-2xl',
     xl: 'max-w-4xl',
+    full: 'max-w-[90vw]',
   }
 
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/30"
+            className="absolute inset-0 bg-black/50"
             onClick={onClose}
           />
+          
+          {/* Modal */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className={`relative bg-white rounded-lg shadow-elevation ${sizes[size]} w-full mx-4 z-10 overflow-hidden`}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className={`relative bg-white rounded-2xl shadow-xl ${sizes[size]} w-full mx-4 z-10 overflow-hidden`}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-accent-200">
               <h2 className="text-lg font-semibold text-accent-900">{title}</h2>
               <button
                 onClick={onClose}
-                className="text-accent-500 hover:text-accent-700 transition-colors"
+                className="p-1 rounded-lg hover:bg-accent-100 transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-5 h-5 text-accent-500" />
               </button>
             </div>
 
@@ -56,7 +61,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md', footer = null })
 
             {/* Footer */}
             {footer && (
-              <div className="px-6 py-4 border-t border-accent-200 bg-accent-50 flex items-center justify-end gap-2 rounded-b-lg">
+              <div className="px-6 py-4 border-t border-accent-200 bg-accent-50 flex items-center justify-end gap-2">
                 {footer}
               </div>
             )}

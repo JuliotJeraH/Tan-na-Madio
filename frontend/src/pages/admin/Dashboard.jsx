@@ -1,193 +1,182 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Users, Trash2, Truck, AlertCircle } from 'lucide-react'
-import { statsAPI, userAPI } from '../../services/api'
-import { Button, Card, CardBody, CardHeader, StatCard, LoadingState, ErrorState } from '../../components/common'
+import { Users, Truck, AlertCircle, CheckCircle, TrendingUp, MapPin } from 'lucide-react'
+import { statsAPI } from '../../api/stats'
+import { signalementAPI } from '../../api/signalements'
+import { collecteAPI } from '../../api/collectes'
+import StatCard from '../../components/common/StatCard'
+import Spinner from '../../components/common/Spinner'
+import Badge from '../../components/common/Badge'
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null)
+  const [recentSignalements, setRecentSignalements] = useState([])
+  const [recentCollectes, setRecentCollectes] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const navigate = useNavigate()
 
   useEffect(() => {
-    fetchStats()
+    fetchDashboardData()
   }, [])
 
-  const fetchStats = async () => {
+  const fetchDashboardData = async () => {
     try {
-      const response = await statsAPI.getDashboard()
-      setStats(response.data)
-    } catch (err) {
-      console.error('Error fetching stats:', err)
-      setError('Erreur lors du chargement des statistiques')
+      const [statsRes, signalementsRes, collectesRes] = await Promise.all([
+        statsAPI.getDashboard(),
+        signalementAPI.list({ limit: 5 }),
+        collecteAPI.list({ limit: 5 })
+      ])
+      setStats(statsRes.data)
+      setRecentSignalements(signalementsRes.data)
+      setRecentCollectes(collectesRes.data)
+    } catch (error) {
+      console.error('Error fetching dashboard:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  if (loading) return <LoadingState message="Chargement du tableau de bord..." />
-  if (error) return <ErrorState message={error} onRetry={fetchStats} />
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Spinner size="lg" />
+      </div>
+    )
+  }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-accent-900">Tableau de Bord Administrateur</h1>
-        <p className="text-accent-600 mt-2">Vue d&apos;ensemble de la plateforme GreenCollect</p>
+      <div>
+        <h1 className="text-2xl font-bold text-accent-900">Tableau de Bord Administrateur</h1>
+        <p className="text-accent-500 mt-1">Vue d'ensemble de la plateforme Tanàna Madio</p>
       </div>
 
-      {/* Main Stats */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <StatCard
-            title="Signalements totaux"
-            value={stats.totalSignalements || 0}
-            icon={AlertCircle}
-            color="primary"
-          />
-          <StatCard
-            title="Utilisateurs actifs"
-            value={stats.activeUsers || 0}
-            icon={Users}
-            color="success"
-          />
-          <StatCard
-            title="Collectes complétées"
-            value={stats.completedCollectes || 0}
-            icon={Trash2}
-            color="info"
-          />
-          <StatCard
-            title="Camions en service"
-            value={stats.activeTrucks || 0}
-            icon={Truck}
-            color="warning"
-          />
-        </div>
-      )}
-
-      {/* Management Sections */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Users Management */}
-        <Card>
-          <CardHeader>
-            <h2 className="font-semibold text-lg text-accent-900 flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              Gestion des Utilisateurs
-            </h2>
-          </CardHeader>
-          <CardBody className="space-y-4">
-            <p className="text-sm text-accent-600">
-              Gérez les utilisateurs, définissez les rôles et contrôlez les accès.
-            </p>
-            <Button
-              className="w-full"
-              onClick={() => navigate('/admin/users')}
-            >
-              Gérer les utilisateurs
-            </Button>
-          </CardBody>
-        </Card>
-
-        {/* Zones Management */}
-        <Card>
-          <CardHeader>
-            <h2 className="font-semibold text-lg text-accent-900 flex items-center gap-2">
-              <AlertCircle className="w-5 h-5" />
-              Gestion des Zones
-            </h2>
-          </CardHeader>
-          <CardBody className="space-y-4">
-            <p className="text-sm text-accent-600">
-              Créez et gérez les zones de collecte de votre territoire.
-            </p>
-            <Button
-              className="w-full"
-              onClick={() => navigate('/admin/zones')}
-            >
-              Gérer les zones
-            </Button>
-          </CardBody>
-        </Card>
-
-        {/* Camions Management */}
-        <Card>
-          <CardHeader>
-            <h2 className="font-semibold text-lg text-accent-900 flex items-center gap-2">
-              <Truck className="w-5 h-5" />
-              Gestion des Camions
-            </h2>
-          </CardHeader>
-          <CardBody className="space-y-4">
-            <p className="text-sm text-accent-600">
-              Suivez la flotte de véhicules et leur état de fonctionnement.
-            </p>
-            <Button
-              className="w-full"
-              onClick={() => navigate('/admin/camions')}
-            >
-              Gérer les camions
-            </Button>
-          </CardBody>
-        </Card>
-
-        {/* Reports & Analytics */}
-        <Card>
-          <CardHeader>
-            <h2 className="font-semibold text-lg text-accent-900 flex items-center gap-2">
-              <Trash2 className="w-5 h-5" />
-              Rapports & Statistiques
-            </h2>
-          </CardHeader>
-          <CardBody className="space-y-4">
-            <p className="text-sm text-accent-600">
-              Consultez les rapports détaillés et les statistiques de performance.
-            </p>
-            <Button
-              className="w-full"
-              variant="secondary"
-              onClick={() => navigate('/admin/reports')}
-            >
-              Voir les rapports
-            </Button>
-          </CardBody>
-        </Card>
+      {/* Statistiques */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <StatCard
+          title="Signalements"
+          value={stats?.totalSignalements || 0}
+          icon={AlertCircle}
+          color="primary"
+          change="+12% ce mois"
+        />
+        <StatCard
+          title="Utilisateurs"
+          value={stats?.totalUtilisateurs || 0}
+          icon={Users}
+          color="success"
+        />
+        <StatCard
+          title="Collectes"
+          value={stats?.totalCollectes || 0}
+          icon={Truck}
+          color="warning"
+        />
+        <StatCard
+          title="Taux de réussite"
+          value={`${stats?.tauxReussite || 0}%`}
+          icon={CheckCircle}
+          color="info"
+          change="+5%"
+        />
       </div>
 
-      {/* System Status */}
-      {stats && (
-        <Card className="mt-8">
-          <CardHeader>
-            <h2 className="font-semibold text-lg text-accent-900">État du Système</h2>
-          </CardHeader>
-          <CardBody>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="flex items-center justify-between p-4 bg-accent-50 rounded-lg">
-                <div>
-                  <p className="text-sm text-accent-600">Signalements en attente</p>
-                  <p className="text-2xl font-bold text-accent-900">{stats.pendingSignalements || 0}</p>
-                </div>
-                <AlertCircle className="w-8 h-8 text-yellow-500" />
+      {/* Graphiques rapides */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Signalements par statut */}
+        <div className="bg-white rounded-xl border border-accent-200 p-6">
+          <h3 className="font-semibold text-accent-900 mb-4">Signalements par statut</h3>
+          <div className="space-y-3">
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-accent-600">En attente</span>
+                <span className="font-semibold">{stats?.signalementsEnAttente || 0}</span>
               </div>
-              <div className="flex items-center justify-between p-4 bg-accent-50 rounded-lg">
-                <div>
-                  <p className="text-sm text-accent-600">Collectes en cours</p>
-                  <p className="text-2xl font-bold text-accent-900">{stats.inProgressCollectes || 0}</p>
-                </div>
-                <Truck className="w-8 h-8 text-blue-500" />
-              </div>
-              <div className="flex items-center justify-between p-4 bg-accent-50 rounded-lg">
-                <div>
-                  <p className="text-sm text-accent-600">Efficacité moyenne</p>
-                  <p className="text-2xl font-bold text-accent-900">{stats.averageEfficiency || '0'}%</p>
-                </div>
-                <Trash2 className="w-8 h-8 text-green-500" />
+              <div className="w-full bg-accent-100 rounded-full h-2">
+                <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${((stats?.signalementsEnAttente || 0) / (stats?.totalSignalements || 1)) * 100}%` }} />
               </div>
             </div>
-          </CardBody>
-        </Card>
-      )}
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-accent-600">En cours</span>
+                <span className="font-semibold">{stats?.signalementsEnCours || 0}</span>
+              </div>
+              <div className="w-full bg-accent-100 rounded-full h-2">
+                <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${((stats?.signalementsEnCours || 0) / (stats?.totalSignalements || 1)) * 100}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-accent-600">Collectés</span>
+                <span className="font-semibold">{stats?.signalementsCollectes || 0}</span>
+              </div>
+              <div className="w-full bg-accent-100 rounded-full h-2">
+                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${((stats?.signalementsCollectes || 0) / (stats?.totalSignalements || 1)) * 100}%` }} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Performance mensuelle */}
+        <div className="bg-white rounded-xl border border-accent-200 p-6">
+          <h3 className="font-semibold text-accent-900 mb-4">Performance mensuelle</h3>
+          <div className="flex items-center justify-center h-40">
+            <div className="text-center">
+              <TrendingUp className="w-12 h-12 text-primary-500 mx-auto mb-3" />
+              <p className="text-accent-600">Graphique détaillé disponible</p>
+              <p className="text-sm text-accent-400">dans la section Statistiques</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Dernières activités */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Derniers signalements */}
+        <div className="bg-white rounded-xl border border-accent-200">
+          <div className="px-6 py-4 border-b border-accent-200">
+            <h3 className="font-semibold text-accent-900">Derniers signalements</h3>
+          </div>
+          <div className="divide-y divide-accent-100">
+            {recentSignalements.slice(0, 4).map((signal) => (
+              <div key={signal.id} className="px-6 py-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-accent-900">{signal.description?.substring(0, 40)}...</p>
+                  <p className="text-xs text-accent-400 mt-1">{signal.adresse}</p>
+                </div>
+                <Badge variant={signal.statut === 'en_attente' ? 'warning' : signal.statut === 'collecte' ? 'success' : 'info'}>
+                  {signal.statut}
+                </Badge>
+              </div>
+            ))}
+            {recentSignalements.length === 0 && (
+              <div className="px-6 py-8 text-center text-accent-400">Aucun signalement récent</div>
+            )}
+          </div>
+        </div>
+
+        {/* Dernières collectes */}
+        <div className="bg-white rounded-xl border border-accent-200">
+          <div className="px-6 py-4 border-b border-accent-200">
+            <h3 className="font-semibold text-accent-900">Dernières collectes</h3>
+          </div>
+          <div className="divide-y divide-accent-100">
+            {recentCollectes.slice(0, 4).map((collecte) => (
+              <div key={collecte.id} className="px-6 py-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-accent-900">Collecte du {new Date(collecte.date_planifiee).toLocaleDateString('fr-FR')}</p>
+                  <p className="text-xs text-accent-400 mt-1">{collecte.nb_signalements_traites || 0} signalements</p>
+                </div>
+                <Badge variant={collecte.statut === 'planifiee' ? 'info' : collecte.statut === 'terminee' ? 'success' : 'warning'}>
+                  {collecte.statut}
+                </Badge>
+              </div>
+            ))}
+            {recentCollectes.length === 0 && (
+              <div className="px-6 py-8 text-center text-accent-400">Aucune collecte récente</div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

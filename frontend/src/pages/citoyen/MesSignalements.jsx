@@ -1,103 +1,177 @@
-import { useState, useEffect } from 'react'
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useSignalements } from '../../hooks/useSignalements'
-import { Card, Badge, Button, LoadingState, EmptyState } from '../../components/common'
-import { motion } from 'framer-motion'
-import { Eye, Trash2 } from 'lucide-react'
+import { Eye, MapPin, Clock, Trash2, Filter } from 'lucide-react'
+import Card from '../../components/common/Card'
+import Badge from '../../components/common/Badge'
+import Button from '../../components/common/Button'
+import Spinner from '../../components/common/Spinner'
+import EmptyState from '../../components/common/EmptyState'
 
-export default function MesSignalements() {
-  const { signalements, loading } = useSignalements({ user_id: 'current' })
+const MesSignalements = () => {
+  const { signalements, loading, rejeterSignalement } = useSignalements({ mes_signalements: true })
   const [filter, setFilter] = useState('tous')
+  const navigate = useNavigate()
 
-  const filtered = signalements.filter(s => 
-    filter === 'tous' || s.statut === filter
-  )
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Spinner size="lg" />
+      </div>
+    )
+  }
 
-  if (loading) return <LoadingState message="Chargement vos signalements..." />
+  const getStatusVariant = (statut) => {
+    const variants = {
+      en_attente: 'warning',
+      valide: 'info',
+      en_cours: 'info',
+      collecte: 'success',
+      rejete: 'danger',
+    }
+    return variants[statut] || 'default'
+  }
+
+  const getStatusLabel = (statut) => {
+    const labels = {
+      en_attente: 'En attente',
+      valide: 'Validé',
+      en_cours: 'En cours',
+      collecte: 'Collecté',
+      rejete: 'Rejeté',
+    }
+    return labels[statut] || statut
+  }
+
+  const filteredSignalements = signalements.filter(s => {
+    if (filter === 'tous') return true
+    return s.statut === filter
+  })
+
+  const stats = {
+    total: signalements.length,
+    enAttente: signalements.filter(s => s.statut === 'en_attente').length,
+    enCours: signalements.filter(s => s.statut === 'en_cours' || s.statut === 'valide').length,
+    collectes: signalements.filter(s => s.statut === 'collecte').length,
+  }
+
+  if (signalements.length === 0) {
+    return (
+      <EmptyState
+        icon={MapPin}
+        title="Aucun signalement"
+        message="Vous n'avez pas encore signalé de problème"
+        actionText="Signaler un problème"
+        action={() => navigate('/citoyen/signaler')}
+      />
+    )
+  }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="p-6"
-    >
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Mes Signalements</h1>
-        <p className="text-gray-600">Suivi de l'historique de vos signalements</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-accent-900">Mes Signalements</h1>
+          <p className="text-accent-500 mt-1">Suivez l'évolution de vos signalements</p>
+        </div>
+        <Button onClick={() => navigate('/citoyen/signaler')}>
+          Nouveau signalement
+        </Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl border border-accent-200 p-4 text-center">
+          <p className="text-2xl font-bold text-primary-600">{stats.total}</p>
+          <p className="text-sm text-accent-500">Total</p>
+        </div>
+        <div className="bg-white rounded-xl border border-accent-200 p-4 text-center">
+          <p className="text-2xl font-bold text-yellow-600">{stats.enAttente}</p>
+          <p className="text-sm text-accent-500">En attente</p>
+        </div>
+        <div className="bg-white rounded-xl border border-accent-200 p-4 text-center">
+          <p className="text-2xl font-bold text-blue-600">{stats.enCours}</p>
+          <p className="text-sm text-accent-500">En cours</p>
+        </div>
+        <div className="bg-white rounded-xl border border-accent-200 p-4 text-center">
+          <p className="text-2xl font-bold text-green-600">{stats.collectes}</p>
+          <p className="text-sm text-accent-500">Collectés</p>
+        </div>
       </div>
 
       {/* Filtres */}
-      <div className="flex gap-3 mb-6 overflow-x-auto pb-2">
-        {['tous', 'nouveau', 'en_traitement', 'resolu'].map(status => (
+      <div className="flex gap-2 flex-wrap">
+        {['tous', 'en_attente', 'valide', 'en_cours', 'collecte', 'rejete'].map(status => (
           <button
             key={status}
             onClick={() => setFilter(status)}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
               filter === status
-                ? 'bg-green-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                ? 'bg-primary-500 text-white'
+                : 'bg-accent-100 text-accent-600 hover:bg-accent-200'
             }`}
           >
-            {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
+            {status === 'tous' ? 'Tous' : getStatusLabel(status)}
           </button>
         ))}
       </div>
 
-      {filtered.length === 0 ? (
-        <EmptyState 
-          icon="📋"
-          title="Aucun signalement"
-          message={filter === 'tous' 
-            ? "Vous n'avez pas encore signalé de déchets" 
-            : `Aucun signalement ${filter}`
-          }
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map((signal, idx) => (
-            <motion.div
-              key={signal.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
-            >
-              <Card className="h-full flex flex-col">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="font-semibold text-gray-900 text-lg">{signal.type}</h3>
-                    <p className="text-sm text-gray-600">
-                      {new Date(signal.date_creation).toLocaleDateString('fr-FR')}
-                    </p>
-                  </div>
-                  <Badge>{signal.statut}</Badge>
+      {/* Liste */}
+      <div className="space-y-3">
+        {filteredSignalements.map((signal) => (
+          <Card key={signal.id} className="hover:shadow-md transition-all">
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <h3 className="font-semibold text-accent-900">
+                    {signal.description?.substring(0, 80)}...
+                  </h3>
+                  <Badge variant={getStatusVariant(signal.statut)}>
+                    {getStatusLabel(signal.statut)}
+                  </Badge>
                 </div>
-
-                <p className="text-gray-700 mb-4 flex-grow">{signal.description}</p>
-
-                {signal.photo && (
-                  <div className="mb-4 rounded-lg overflow-hidden bg-gray-100 h-32">
-                    <img 
-                      src={signal.photo} 
-                      alt={signal.type}
-                      className="w-full h-full object-cover"
-                    />
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-accent-500 mb-2">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    {signal.adresse || 'Adresse non spécifiée'}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {new Date(signal.created_at).toLocaleDateString('fr-FR')}
+                  </span>
+                </div>
+                
+                {signal.urgence && (
+                  <div className="mt-2">
+                    <Badge variant={
+                      signal.urgence === 'critique' ? 'danger' :
+                      signal.urgence === 'eleve' ? 'warning' : 'info'
+                    }>
+                      Urgence: {signal.urgence}
+                    </Badge>
                   </div>
                 )}
-
-                <div className="flex gap-2 pt-4 border-t">
-                  <Button variant="primary" size="sm" className="flex-1">
-                    <Eye className="w-4 h-4 mr-2" />
-                    Voir
+              </div>
+              
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => navigate(`/citoyen/mes-signalements/${signal.id}`)}>
+                  <Eye className="w-4 h-4 mr-1" />
+                  Détails
+                </Button>
+                {signal.statut === 'en_attente' && (
+                  <Button size="sm" variant="ghost" className="text-red-500" onClick={() => rejeterSignalement(signal.id)}>
+                    <Trash2 className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="sm" className="flex-1">
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Supprimer
-                  </Button>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-      )}
-    </motion.div>
+                )}
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
   )
 }
+
+export default MesSignalements

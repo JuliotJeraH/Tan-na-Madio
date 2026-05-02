@@ -1,40 +1,30 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { camionAPI } from '../api/camions'
 
-export function useCamions(filters = {}) {
+export const useCamions = (filters = {}) => {
   const [camions, setCamions] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  useEffect(() => {
-    fetchCamions()
-  }, [filters])
-
-  const fetchCamions = async () => {
+  const fetchCamions = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
       const response = await camionAPI.list(filters)
       setCamions(response.data)
     } catch (err) {
-      setError(err.message)
-      console.error('[v0] Error fetching camions:', err)
+      setError(err.response?.data?.message || 'Erreur de chargement')
+      console.error(err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters])
 
-  const getCamion = async (id) => {
-    try {
-      const response = await camionAPI.getById(id)
-      return response.data
-    } catch (err) {
-      setError(err.message)
-      throw err
-    }
-  }
+  useEffect(() => {
+    fetchCamions()
+  }, [fetchCamions])
 
-  return { camions, loading, error, fetchCamions, getCamion }
+  return { camions, loading, error, refetch: fetchCamions }
 }
 
 export default useCamions

@@ -1,12 +1,11 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Menu, X, LogOut, User } from 'lucide-react'
-import { useAuth } from '../../context/AuthContext'
+import { Menu, LogOut, User, Bell } from 'lucide-react'
+import { useAuth } from '../../hooks/useAuth'
 import Button from '../common/Button'
 
-const Navbar = () => {
-  const [isOpen, setIsOpen] = useState(false)
-  const { user, logout, isAuthenticated } = useAuth()
+const Navbar = ({ toggleSidebar }) => {
+  const { user, logout } = useAuth()
   const navigate = useNavigate()
 
   const handleLogout = async () => {
@@ -14,204 +13,49 @@ const Navbar = () => {
     navigate('/login')
   }
 
-  const handleNavigation = (path) => {
-    navigate(path)
-    setIsOpen(false)
+  const getRoleLabel = (role) => {
+    const labels = {
+      citoyen: 'Citoyen',
+      agent_municipal: 'Agent Municipal',
+      chauffeur: 'Chauffeur',
+      administrateur: 'Administrateur',
+    }
+    return labels[role] || role
   }
 
   return (
-    <nav className="bg-white border-b border-accent-200 shadow-sm sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <div
-            className="flex items-center gap-2 cursor-pointer"
-            onClick={() => handleNavigation('/')}
+    <nav className="bg-white border-b border-accent-200 shadow-sm sticky top-0 z-30">
+      <div className="px-6 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={toggleSidebar}
+            className="p-2 rounded-lg hover:bg-accent-100 transition-colors"
           >
-            <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">GC</span>
-            </div>
-            <span className="font-bold text-accent-900 hidden sm:inline">GreenCollect</span>
-          </div>
-
-          {/* Desktop Menu */}
-          {isAuthenticated && (
-            <div className="hidden md:flex items-center gap-6">
-              {user?.role === 'admin' && (
-                <>
-                  <button
-                    onClick={() => handleNavigation('/admin')}
-                    className="text-accent-700 hover:text-primary-500 transition-colors"
-                  >
-                    Dashboard
-                  </button>
-                  <button
-                    onClick={() => handleNavigation('/admin/users')}
-                    className="text-accent-700 hover:text-primary-500 transition-colors"
-                  >
-                    Utilisateurs
-                  </button>
-                </>
-              )}
-              {user?.role === 'agent' && (
-                <>
-                  <button
-                    onClick={() => handleNavigation('/agent')}
-                    className="text-accent-700 hover:text-primary-500 transition-colors"
-                  >
-                    Signalements
-                  </button>
-                  <button
-                    onClick={() => handleNavigation('/agent/collectes')}
-                    className="text-accent-700 hover:text-primary-500 transition-colors"
-                  >
-                    Collectes
-                  </button>
-                </>
-              )}
-              {user?.role === 'chauffeur' && (
-                <>
-                  <button
-                    onClick={() => handleNavigation('/chauffeur')}
-                    className="text-accent-700 hover:text-primary-500 transition-colors"
-                  >
-                    Mes Tournées
-                  </button>
-                </>
-              )}
-              {user?.role === 'citoyen' && (
-                <>
-                  <button
-                    onClick={() => handleNavigation('/citoyen')}
-                    className="text-accent-700 hover:text-primary-500 transition-colors"
-                  >
-                    Signaler
-                  </button>
-                  <button
-                    onClick={() => handleNavigation('/citoyen/historique')}
-                    className="text-accent-700 hover:text-primary-500 transition-colors"
-                  >
-                    Mes Signalements
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* User Menu */}
-          <div className="flex items-center gap-4">
-            {isAuthenticated ? (
-              <div className="hidden md:flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-accent-600" />
-                  <span className="text-sm text-accent-700">{user?.name}</span>
-                </div>
-                <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
-                  <LogOut className="w-4 h-4" />
-                  Déconnexion
-                </Button>
-              </div>
-            ) : (
-              <div className="hidden md:flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => navigate('/login')}>
-                  Se connecter
-                </Button>
-                <Button size="sm" onClick={() => navigate('/register')}>
-                  S&apos;inscrire
-                </Button>
-              </div>
-            )}
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="md:hidden text-accent-700 hover:text-primary-500"
-            >
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
+            <Menu className="w-5 h-5 text-accent-600" />
+          </button>
+          <h1 className="text-xl font-semibold text-accent-800">Tanàna Madio</h1>
         </div>
 
-        {/* Mobile Menu */}
-        {isOpen && (
-          <div className="md:hidden border-t border-accent-200 py-4 space-y-3">
-            {isAuthenticated ? (
-              <>
-                <div className="px-4 py-2 text-sm text-accent-700">
-                  Connecté en tant que: <strong>{user?.name}</strong>
-                </div>
-                {user?.role === 'admin' && (
-                  <>
-                    <button
-                      onClick={() => handleNavigation('/admin')}
-                      className="block w-full text-left px-4 py-2 text-accent-700 hover:bg-accent-50"
-                    >
-                      Dashboard
-                    </button>
-                    <button
-                      onClick={() => handleNavigation('/admin/users')}
-                      className="block w-full text-left px-4 py-2 text-accent-700 hover:bg-accent-50"
-                    >
-                      Utilisateurs
-                    </button>
-                  </>
-                )}
-                {user?.role === 'agent' && (
-                  <>
-                    <button
-                      onClick={() => handleNavigation('/agent')}
-                      className="block w-full text-left px-4 py-2 text-accent-700 hover:bg-accent-50"
-                    >
-                      Signalements
-                    </button>
-                    <button
-                      onClick={() => handleNavigation('/agent/collectes')}
-                      className="block w-full text-left px-4 py-2 text-accent-700 hover:bg-accent-50"
-                    >
-                      Collectes
-                    </button>
-                  </>
-                )}
-                {user?.role === 'citoyen' && (
-                  <>
-                    <button
-                      onClick={() => handleNavigation('/citoyen')}
-                      className="block w-full text-left px-4 py-2 text-accent-700 hover:bg-accent-50"
-                    >
-                      Signaler
-                    </button>
-                    <button
-                      onClick={() => handleNavigation('/citoyen/historique')}
-                      className="block w-full text-left px-4 py-2 text-accent-700 hover:bg-accent-50"
-                    >
-                      Mes Signalements
-                    </button>
-                  </>
-                )}
-                <hr className="my-2" />
-                <button
-                  onClick={handleLogout}
-                  className="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 font-medium"
-                >
-                  Déconnexion
-                </button>
-              </>
-            ) : (
-              <>
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => handleNavigation('/login')}
-                >
-                  Se connecter
-                </Button>
-                <Button className="w-full" onClick={() => handleNavigation('/register')}>
-                  S&apos;inscrire
-                </Button>
-              </>
-            )}
+        <div className="flex items-center gap-4">
+          <button className="p-2 rounded-lg hover:bg-accent-100 transition-colors relative">
+            <Bell className="w-5 h-5 text-accent-600" />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+          </button>
+
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <p className="text-sm font-medium text-accent-900">{user?.prenom} {user?.nom}</p>
+              <p className="text-xs text-accent-500">{getRoleLabel(user?.role)}</p>
+            </div>
+            <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+              <User className="w-4 h-4 text-primary-600" />
+            </div>
           </div>
-        )}
+
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
+            <LogOut className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
     </nav>
   )

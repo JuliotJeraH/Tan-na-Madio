@@ -1,30 +1,71 @@
-import { useState, useEffect } from 'react'
-import { collecteAPI } from '../services/api'
+import { useState, useEffect, useCallback } from 'react'
+import { collecteAPI } from '../api/collectes'
 
-const useCollectes = (filters = {}) => {
-  const [data, setData] = useState([])
+export const useCollectes = (filters = {}) => {
+  const [collectes, setCollectes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const fetch = async () => {
+  const fetchCollectes = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await collecteAPI.list(filters)
-      setData(response.data)
       setError(null)
+      const response = await collecteAPI.list(filters)
+      setCollectes(response.data)
     } catch (err) {
-      setError(err.message)
-      console.error(err)
+      setError(err.response?.data?.message || 'Erreur de chargement')
+      console.error('Error fetching collectes:', err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters])
 
   useEffect(() => {
-    fetch()
-  }, [JSON.stringify(filters)])
+    fetchCollectes()
+  }, [fetchCollectes])
 
-  return { data, loading, error, refetch: fetch }
+  const createCollecte = async (data) => {
+    try {
+      const response = await collecteAPI.create(data)
+      await fetchCollectes()
+      return response.data
+    } catch (err) {
+      setError(err.response?.data?.message)
+      throw err
+    }
+  }
+
+  const updateCollecte = async (id, data) => {
+    try {
+      const response = await collecteAPI.update(id, data)
+      await fetchCollectes()
+      return response.data
+    } catch (err) {
+      setError(err.response?.data?.message)
+      throw err
+    }
+  }
+
+  const completeCollecte = async (id) => {
+    try {
+      const response = await collecteAPI.complete(id)
+      await fetchCollectes()
+      return response.data
+    } catch (err) {
+      setError(err.response?.data?.message)
+      throw err
+    }
+  }
+
+  return { 
+    collectes, 
+    loading, 
+    error, 
+    refetch: fetchCollectes,
+    createCollecte,
+    updateCollecte,
+    completeCollecte
+  }
 }
 
 export default useCollectes

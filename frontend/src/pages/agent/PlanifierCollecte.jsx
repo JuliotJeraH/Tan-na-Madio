@@ -1,96 +1,193 @@
-import { useState } from 'react'
-import { Card, Button, Modal } from '../../components/common'
-import { motion } from 'framer-motion'
-import { Plus, Calendar, Truck } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Calendar, Truck, MapPin, Clock, AlertCircle } from 'lucide-react'
+import { collecteAPI } from '../../api/collectes'
+import { camionAPI } from '../../api/camions'
+import { zoneAPI } from '../../api/zone'
+import Button from '../../components/common/Button'
+import Card from '../../components/common/Card'
+import Spinner from '../../components/common/Spinner'
 
-export default function PlanifierCollecte() {
-  const [showModal, setShowModal] = useState(false)
-  const [collectes] = useState([
-    { id: 1, date: '2026-04-30', camion: 'AB-123', points: 5, statut: 'planifiee' },
-    { id: 2, date: '2026-05-01', camion: 'CD-456', points: 7, statut: 'planifiee' },
-  ])
+const PlanifierCollecte = () => {
+  const [formData, setFormData] = useState({
+    camion_id: '',
+    zone_id: '',
+    date_planifiee: '',
+    notes: '',
+  })
+  const [camions, setCamions] = useState([])
+  const [zones, setZones] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [loadingData, setLoadingData] = useState(true)
+  const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(false)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    try {
+      const [camionsRes, zonesRes] = await Promise.all([
+        camionAPI.list({ statut: 'disponible' }),
+        zoneAPI.list({ actif: true })
+      ])
+      setCamions(camionsRes.data)
+      setZones(zonesRes.data)
+    } catch (err) {
+      setError('Erreur de chargement des données')
+    } finally {
+      setLoadingData(false)
+    }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    
+    try {
+      await collecteAPI.create(formData)
+      setSuccess(true)
+      setTimeout(() => navigate('/agent/collectes'), 2000)
+    } catch (err) {
+      setError(err.response?.data?.message || 'Erreur lors de la planification')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loadingData) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Spinner size="lg" />
+      </div>
+    )
+  }
+
+  if (success) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+          <CheckCircle className="w-8 h-8 text-green-600" />
+        </div>
+        <h2 className="text-xl font-bold text-accent-900 mb-2">Collecte planifiée !</h2>
+        <p className="text-accent-500">La tournée a été créée avec succès.</p>
+        <p className="text-sm text-accent-400 mt-2">Redirection en cours...</p>
+      </div>
+    )
+  }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="p-6"
-    >
-      <div className="flex justify-between items-start mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-909 mb-2">Planifier une Collecte</h1>
-          <p className="text-gray-600">Créez et planifiez les tournées de collecte</p>
-        </div>
-        <Button onClick={() => setShowModal(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Nouvelle collecte
-        </Button>
+    <div className="max-w-2xl mx-auto space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-accent-900">Planifier une Collecte</h1>
+        <p className="text-accent-500 mt-1">Organisez une nouvelle tournée de collecte</p>
       </div>
 
-      {/* Planning calendar */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Calendrier */}
-        <Card className="lg:col-span-2">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Calendrier des collectes</h3>
-          <div className="bg-gray-50 rounded-lg p-8 text-center">
-            <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-600">Calendrier interactif à intégrer</p>
+      {/* Formulaire */}
+      <Card>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-accent-700 mb-2">
+              <Truck className="w-4 h-4 inline mr-1" />
+              Camion *
+            </label>
+            <select
+              className="input-base"
+              value={formData.camion_id}
+              onChange={(e) => setFormData({ ...formData, camion_id: e.target.value })}
+              required
+            >
+              <option value="">Sélectionner un camion</option>
+              {camions.map((camion) => (
+                <option key={camion.id} value={camion.id}>
+                  {camion.immatriculation} - {camion.modele || 'Modèle inconnu'} ({camion.capacite_kg} kg)
+                </option>
+              ))}
+            </select>
+            {camions.length === 0 && (
+              <p className="text-sm text-yellow-600 mt-1">⚠️ Aucun camion disponible</p>
+            )}
           </div>
-        </Card>
 
-        {/* Prochaines collectes */}
-        <Card>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Prochaines collectes</h3>
-          <div className="space-y-3">
-            {collectes.map((collecte) => (
-              <div key={collecte.id} className="p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-start justify-between mb-2">
-                  <p className="font-semibold text-gray-900">{collecte.camion}</p>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                    {collecte.statut}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-600">{collecte.date}</p>
-                <p className="text-xs text-gray-600">{collecte.points} points</p>
-              </div>
-            ))}
+          <div>
+            <label className="block text-sm font-medium text-accent-700 mb-2">
+              <MapPin className="w-4 h-4 inline mr-1" />
+              Zone *
+            </label>
+            <select
+              className="input-base"
+              value={formData.zone_id}
+              onChange={(e) => setFormData({ ...formData, zone_id: e.target.value })}
+              required
+            >
+              <option value="">Sélectionner une zone</option>
+              {zones.map((zone) => (
+                <option key={zone.id} value={zone.id}>
+                  {zone.nom} - Tous les {zone.frequence_collecte_jours || 7} jours
+                </option>
+              ))}
+            </select>
           </div>
-        </Card>
+
+          <div>
+            <label className="block text-sm font-medium text-accent-700 mb-2">
+              <Calendar className="w-4 h-4 inline mr-1" />
+              Date planifiée *
+            </label>
+            <input
+              type="date"
+              className="input-base"
+              value={formData.date_planifiee}
+              onChange={(e) => setFormData({ ...formData, date_planifiee: e.target.value })}
+              required
+              min={new Date().toISOString().split('T')[0]}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-accent-700 mb-2">
+              <Clock className="w-4 h-4 inline mr-1" />
+              Notes
+            </label>
+            <textarea
+              className="input-base resize-none h-24"
+              placeholder="Instructions particulières pour le chauffeur..."
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            />
+          </div>
+
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex gap-3">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4">
+            <Button type="submit" isLoading={loading} disabled={camions.length === 0} className="flex-1">
+              Planifier la collecte
+            </Button>
+            <Button type="button" variant="outline" onClick={() => navigate('/agent')} className="flex-1">
+              Annuler
+            </Button>
+          </div>
+        </form>
+      </Card>
+
+      {/* Info */}
+      <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+        <p className="text-sm text-blue-800">
+          💡 Les tournées sont optimisées automatiquement avec l'algorithme de Dijkstra.
+          Le chauffeur recevra l'itinéraire le plus court pour collecter tous les signalements de la zone.
+        </p>
       </div>
-
-      {/* Modal */}
-      {showModal && (
-        <Modal title="Planifier une nouvelle collecte" onClose={() => setShowModal(false)}>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-1">Date</label>
-              <input type="date" className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-1">Camion</label>
-              <select className="w-full px-4 py-2 border border-gray-300 rounded-lg">
-                <option>Sélectionner un camion</option>
-                <option>AB-123</option>
-                <option>CD-456</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-1">Zone</label>
-              <select className="w-full px-4 py-2 border border-gray-300 rounded-lg">
-                <option>Sélectionner une zone</option>
-                <option>Zone 1</option>
-                <option>Zone 2</option>
-              </select>
-            </div>
-            <div className="flex gap-2 pt-4">
-              <Button variant="primary" className="flex-1">Planifier</Button>
-              <Button variant="secondary" className="flex-1" onClick={() => setShowModal(false)}>
-                Annuler
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-    </motion.div>
+    </div>
   )
 }
+
+export default PlanifierCollecte

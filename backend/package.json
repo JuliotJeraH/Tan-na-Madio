@@ -8,6 +8,7 @@
     "dev": "nodemon index.js",
     "test": "jest",
     "test:watch": "jest --watch",
+    "db:init": "node scripts/initDb.js",
     "db:sync": "node scripts/syncDb.js",
     "db:seed": "node scripts/seedDb.js",
     "db:reset": "npm run db:sync && npm run db:seed"

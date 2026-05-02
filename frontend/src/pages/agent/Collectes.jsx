@@ -1,86 +1,142 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useCollectes } from '../../hooks/useCollectes'
-import { Card, Badge, Button, LoadingState } from '../../components/common'
-import { motion } from 'framer-motion'
-import { Check, Clock, AlertCircle } from 'lucide-react'
+import { Calendar, Truck, MapPin, CheckCircle, Clock } from 'lucide-react'
+import Card from '../../components/common/Card'
+import Badge from '../../components/common/Badge'
+import Button from '../../components/common/Button'
+import Spinner from '../../components/common/Spinner'
+import EmptyState from '../../components/common/EmptyState'
 
-export default function Collectes() {
-  const { collectes, loading } = useCollectes()
+const Collectes = () => {
+  const { collectes, loading, completeCollecte } = useCollectes()
   const [filter, setFilter] = useState('tous')
 
-  if (loading) return <LoadingState message="Chargement des collectes..." />
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Spinner size="lg" />
+      </div>
+    )
+  }
 
-  const filtered = collectes.filter(c =>
-    filter === 'tous' || c.statut === filter
-  )
+  const filteredCollectes = collectes.filter(c => {
+    if (filter === 'tous') return true
+    return c.statut === filter
+  })
+
+  const getStatusVariant = (statut) => {
+    const variants = {
+      planifiee: 'info',
+      en_cours: 'warning',
+      terminee: 'success',
+      annulee: 'danger',
+    }
+    return variants[statut] || 'default'
+  }
+
+  const getStatusLabel = (statut) => {
+    const labels = {
+      planifiee: 'Planifiée',
+      en_cours: 'En cours',
+      terminee: 'Terminée',
+      annulee: 'Annulée',
+    }
+    return labels[statut] || statut
+  }
+
+  if (collectes.length === 0) {
+    return (
+      <EmptyState
+        icon={Calendar}
+        title="Aucune collecte"
+        message="Aucune collecte n'a été planifiée pour le moment"
+        actionText="Planifier une collecte"
+        action={() => window.location.href = '/agent/planifier'}
+      />
+    )
+  }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="p-6"
-    >
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestion des Collectes</h1>
-        <p className="text-gray-600">Planifiez et suivez les collectes</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-accent-900">Gestion des Collectes</h1>
+        <p className="text-accent-500 mt-1">Planifiez et suivez les collectes</p>
       </div>
 
       {/* Filtres */}
-      <div className="flex gap-3 mb-6 overflow-x-auto pb-2">
-        {['tous', 'planifiee', 'en_cours', 'completee'].map(status => (
+      <div className="flex gap-2 flex-wrap">
+        {['tous', 'planifiee', 'en_cours', 'terminee'].map(status => (
           <button
             key={status}
             onClick={() => setFilter(status)}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
+            className={`px-4 py-2 rounded-lg font-medium transition-all ${
               filter === status
-                ? 'bg-green-500 text-white'
-                : 'bg-gray-200 text-gray-700'
+                ? 'bg-primary-500 text-white shadow-md'
+                : 'bg-accent-100 text-accent-600 hover:bg-accent-200'
             }`}
           >
-            {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
+            {status === 'tous' ? 'Toutes' : getStatusLabel(status)}
           </button>
         ))}
       </div>
 
-      {/* Tableau */}
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Date</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Camion</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Points</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Statut</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((collecte) => (
-                <tr key={collecte.id} className="border-b border-gray-200 hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {new Date(collecte.date).toLocaleDateString('fr-FR')}
-                  </td>
-                  <td className="px-6 py-4 font-semibold text-gray-900">{collecte.camion.immatriculation}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{collecte.points_collecte.length} points</td>
-                  <td className="px-6 py-4">
-                    <Badge>{collecte.statut}</Badge>
-                  </td>
-                  <td className="px-6 py-4">
-                    <Button variant="ghost" size="sm">
-                      {collecte.statut === 'completee' ? (
-                        <Check className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <Clock className="w-4 h-4 text-orange-600" />
-                      )}
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-    </motion.div>
+      {/* Liste */}
+      <div className="space-y-3">
+        {filteredCollectes.map((collecte) => (
+          <Card key={collecte.id} className="hover:shadow-md transition-all">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="font-semibold text-accent-900">
+                    Collecte du {new Date(collecte.date_planifiee).toLocaleDateString('fr-FR')}
+                  </h3>
+                  <Badge variant={getStatusVariant(collecte.statut)}>
+                    {getStatusLabel(collecte.statut)}
+                  </Badge>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm text-accent-500">
+                  <span className="flex items-center gap-1">
+                    <Truck className="w-4 h-4" />
+                    {collecte.camion?.immatriculation || 'Camion non assigné'}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-4 h-4" />
+                    {collecte.zone?.nom || 'Zone non définie'}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4" />
+                    {collecte.nb_signalements_traites || 0} signalements
+                  </span>
+                </div>
+                
+                {collecte.distance_km && (
+                  <p className="text-sm text-accent-400 mt-2">
+                    📏 Distance: {collecte.distance_km} km
+                  </p>
+                )}
+              </div>
+              
+              <div className="flex gap-2">
+                {collecte.statut === 'planifiee' && (
+                  <Button size="sm">Démarrer</Button>
+                )}
+                {collecte.statut === 'en_cours' && (
+                  <Button size="sm" onClick={() => completeCollecte(collecte.id)}>
+                    Terminer
+                  </Button>
+                )}
+                <Button size="sm" variant="outline">
+                  Détails
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
   )
 }
+
+export default Collectes

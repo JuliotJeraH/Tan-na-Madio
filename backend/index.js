@@ -20,12 +20,24 @@ const { testConnection } = require('./src/config/db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ========== Middlewares globaux ==========
-app.use(helmet()); // Sécurité des headers HTTP
-app.use(cors()); // CORS
-app.use(express.json()); // Parser JSON
-app.use(express.urlencoded({ extended: true })); // Parser URL-encoded
-app.use(morgan('dev')); // Logging
+// ========== CONFIGURATION CORS CORRECTE ==========
+const corsOptions = {
+  origin: ['http://localhost:3001', 'http://localhost:5173', 'http://127.0.0.1:3001'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+
+// ========== Autres middlewares ==========
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }  // ← Ajouter ceci
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(morgan('dev'));
 
 // Dossier uploads (statique)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -73,11 +85,11 @@ app.use((err, req, res, next) => {
 // ========== Démarrage du serveur ==========
 const startServer = async () => {
   try {
-    // Test de connexion à la base de données
     await testConnection();
     
     app.listen(PORT, () => {
       console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
+      console.log(`📡 CORS autorisé pour: http://localhost:3001`);
     });
   } catch (error) {
     console.error('❌ Erreur au démarrage:', error);
@@ -87,4 +99,4 @@ const startServer = async () => {
 
 startServer();
 
-module.exports = app; // Pour les tests
+module.exports = app;

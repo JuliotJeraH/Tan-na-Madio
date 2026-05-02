@@ -1,127 +1,144 @@
-import { useState } from 'react'
-import { useSignalements } from '../../hooks/useSignalements'
-import { Card, Badge, Button, LoadingState, EmptyState } from '../../components/common'
-import { motion } from 'framer-motion'
-import { Check, X, Eye } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Check, X, Eye, MapPin, Clock } from 'lucide-react'
+import { signalementAPI } from '../../api/signalements'
+import Button from '../../components/common/Button'
+import Badge from '../../components/common/Badge'
+import Spinner from '../../components/common/Spinner'
+import Modal from '../../components/common/Modal'
+import CarteSignalements from '../../components/map/CarteSignalements'
 
-export default function SignalementsEnAttente() {
-  const { signalements, loading } = useSignalements({ statut: 'nouveau' })
+const SignalementsEnAttente = () => {
+  const [signalements, setSignalements] = useState([])
+  const [loading, setLoading] = useState(true)
   const [selectedSignal, setSelectedSignal] = useState(null)
 
-  if (loading) return <LoadingState message="Chargement des signalements..." />
+  useEffect(() => {
+    fetchSignalements()
+  }, [])
 
-  const pendingSignals = signalements.filter(s => s.statut === 'nouveau')
+  const fetchSignalements = async () => {
+    try {
+      const response = await signalementAPI.list({ statut: 'en_attente' })
+      setSignalements(response.data)
+    } catch (error) {
+      console.error('Error fetching signalements:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  if (pendingSignals.length === 0) {
+  const handleValider = async (id) => {
+    try {
+      await signalementAPI.valider(id)
+      fetchSignalements()
+      setSelectedSignal(null)
+    } catch (error) {
+      console.error('Error validating:', error)
+    }
+  }
+
+  const handleRejeter = async (id) => {
+    try {
+      await signalementAPI.rejeter(id)
+      fetchSignalements()
+      setSelectedSignal(null)
+    } catch (error) {
+      console.error('Error rejecting:', error)
+    }
+  }
+
+  if (loading) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Signalements en Attente</h1>
-        <EmptyState 
-          icon="✅"
-          title="Aucun signalement en attente"
-          message="Tous les signalements ont été traités!"
-        />
-      </motion.div>
+      <div className="flex items-center justify-center h-96">
+        <Spinner size="lg" />
+      </div>
     )
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="p-6"
-    >
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Signalements en Attente</h1>
-        <p className="text-gray-600">Validez ou rejetez les nouveaux signalements</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-accent-900">Signalements en Attente</h1>
+        <p className="text-accent-500 mt-1">Validez ou rejetez les nouveaux signalements</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Liste */}
-        <div className="lg:col-span-1 space-y-3">
-          {pendingSignals.map((signal) => (
-            <motion.div
-              key={signal.id}
-              whileHover={{ scale: 1.02 }}
-              onClick={() => setSelectedSignal(signal)}
-            >
-              <Card 
-                className={`cursor-pointer transition-all ${
-                  selectedSignal?.id === signal.id 
-                    ? 'bg-red-50 border-2 border-red-500' 
-                    : 'border border-gray-200'
-                }`}
-              >
-                <p className="font-semibold text-gray-900 mb-1">{signal.type}</p>
-                <p className="text-sm text-gray-600 mb-2">{signal.description.substring(0, 50)}...</p>
-                <p className="text-xs text-gray-500">
-                  {new Date(signal.date_creation).toLocaleDateString('fr-FR')}
-                </p>
-              </Card>
-            </motion.div>
-          ))}
+      {/* Carte */}
+      <div className="bg-white rounded-xl border border-accent-200 p-4">
+        <h3 className="font-semibold text-accent-900 mb-3">Visualisation sur la carte</h3>
+        <div className="h-80 rounded-lg overflow-hidden">
+          <CarteSignalements signalements={signalements} />
         </div>
+      </div>
 
-        {/* Détail */}
-        {selectedSignal && (
-          <div className="lg:col-span-2">
-            <Card>
-              <div className="mb-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{selectedSignal.type}</h2>
-                    <p className="text-gray-600">
-                      Par: {selectedSignal.utilisateur?.nom}
-                    </p>
-                  </div>
-                  <Badge>nouveau</Badge>
+      {/* Liste des signalements */}
+      <div className="grid grid-cols-1 gap-4">
+        {signalements.map((signal) => (
+          <div key={signal.id} className="bg-white rounded-xl border border-accent-200 p-5 hover:shadow-md transition-all">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="font-semibold text-accent-900">{signal.description}</h3>
+                  <Badge variant={signal.urgence === 'critique' ? 'danger' : 'warning'}>{signal.urgence}</Badge>
                 </div>
-
-                <p className="text-gray-700 mb-4">{selectedSignal.description}</p>
-
-                {selectedSignal.photo && (
-                  <div className="mb-4 rounded-lg overflow-hidden bg-gray-100 h-48">
-                    <img 
-                      src={selectedSignal.photo} 
-                      alt={selectedSignal.type}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-600 mb-1">Localisation</p>
-                    <p className="font-semibold text-gray-900">
-                      {selectedSignal.latitude.toFixed(2)}, {selectedSignal.longitude.toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-600 mb-1">Date du signalement</p>
-                    <p className="font-semibold text-gray-900">
-                      {new Date(selectedSignal.date_creation).toLocaleDateString('fr-FR')}
-                    </p>
-                  </div>
+                <div className="flex items-center gap-4 text-sm text-accent-500 mb-3">
+                  <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {signal.adresse || 'Adresse non spécifiée'}</span>
+                  <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(signal.created_at).toLocaleDateString('fr-FR')}</span>
                 </div>
+                <p className="text-accent-600 text-sm mb-4">Signalé par: <span className="font-medium">{signal.citoyen?.nom} {signal.citoyen?.prenom}</span></p>
               </div>
-
-              <div className="border-t pt-6">
-                <h3 className="font-semibold text-gray-900 mb-3">Action</h3>
-                <div className="flex gap-3">
-                  <Button variant="primary" className="flex-1">
-                    <Check className="w-4 h-4 mr-2" />
-                    Valider et traiter
-                  </Button>
-                  <Button variant="danger" className="flex-1">
-                    <X className="w-4 h-4 mr-2" />
-                    Rejeter
-                  </Button>
-                </div>
+              <div className="flex gap-2 ml-4">
+                <Button size="sm" onClick={() => handleValider(signal.id)}>
+                  <Check className="w-4 h-4 mr-1" />
+                  Valider
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setSelectedSignal(signal)}>
+                  <Eye className="w-4 h-4 mr-1" />
+                  Détails
+                </Button>
+                <Button size="sm" variant="danger" onClick={() => handleRejeter(signal.id)}>
+                  <X className="w-4 h-4 mr-1" />
+                  Rejeter
+                </Button>
               </div>
-            </Card>
+            </div>
+          </div>
+        ))}
+
+        {signalements.length === 0 && (
+          <div className="text-center py-12 bg-white rounded-xl border border-accent-200">
+            <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+            <p className="text-accent-500">Aucun signalement en attente</p>
+            <p className="text-sm text-accent-400">Tous les signalements ont été traités</p>
           </div>
         )}
       </div>
-    </motion.div>
+
+      {/* Modal Détails */}
+      {selectedSignal && (
+        <Modal isOpen={!!selectedSignal} onClose={() => setSelectedSignal(null)} title="Détails du signalement">
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm text-accent-500">Description</label>
+              <p className="text-accent-900 mt-1">{selectedSignal.description}</p>
+            </div>
+            <div>
+              <label className="text-sm text-accent-500">Adresse</label>
+              <p className="text-accent-900 mt-1">{selectedSignal.adresse || 'Non spécifiée'}</p>
+            </div>
+            <div>
+              <label className="text-sm text-accent-500">Urgence</label>
+              <div className="mt-1"><Badge variant={selectedSignal.urgence === 'critique' ? 'danger' : 'warning'}>{selectedSignal.urgence}</Badge></div>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button className="flex-1" onClick={() => handleValider(selectedSignal.id)}>Valider</Button>
+              <Button variant="danger" className="flex-1" onClick={() => handleRejeter(selectedSignal.id)}>Rejeter</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
   )
 }
+
+export default SignalementsEnAttente

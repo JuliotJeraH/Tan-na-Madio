@@ -1,10 +1,10 @@
 import api from './axiosConfig'
 
 export const zoneAPI = {
-  list: (filters) => api.get('/zones', { params: filters }),
-  create: (data) => api.post('/zones', data),
+  list: (params) => api.get('/zones', { params }),
   getById: (id) => api.get(`/zones/${id}`),
-  update: (id, data) => api.patch(`/zones/${id}`, data),
+  create: (data) => api.post('/zones', data),
+  update: (id, data) => api.put(`/zones/${id}`, data),
   delete: (id) => api.delete(`/zones/${id}`),
 }
 

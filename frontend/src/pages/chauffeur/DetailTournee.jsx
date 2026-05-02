@@ -1,136 +1,193 @@
-import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
-import { useCamions } from '../../hooks/useCamions'
-import { Card, Button, Badge, LoadingState } from '../../components/common'
-import { MapContainer, TileLayer } from 'react-leaflet'
-import { motion } from 'framer-motion'
-import { ArrowLeft, MapPin, Clock, Truck } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { ArrowLeft, MapPin, Clock, Truck, CheckCircle, Navigation } from 'lucide-react'
+import { collecteAPI } from '../../api/collectes'
+import Card from '../../components/common/Card'
+import Badge from '../../components/common/Badge'
+import Button from '../../components/common/Button'
+import Spinner from '../../components/common/Spinner'
+import CarteSignalements from '../../components/map/CarteSignalements'
+import ItineraireOverlay from '../../components/map/ItineraireOverlay'
 
-export default function DetailTournee() {
+const DetailTournee = () => {
   const { id } = useParams()
-  const { loading } = useCamions()
-  const [tournee, setTournee] = useState(null)
+  const navigate = useNavigate()
+  const [collecte, setCollecte] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [showRoute, setShowRoute] = useState(false)
 
   useEffect(() => {
-    // Mock data - remplacer par vraie API
-    setTournee({
-      id,
-      immatriculation: 'AB-123-CD',
-      marque: 'Iveco',
-      modele: 'Ecolis',
-      charge_actuelle: 4500,
-      capacite: 6000,
-      latitude: 48.8566,
-      longitude: 2.3522,
-      statut: 'en_tournee',
-      collectes: [
-        { id: 1, adresse: '123 Rue de la Paix', statut: 'collecte' },
-        { id: 2, adresse: '456 Boulevard Saint-Germain', statut: 'collecte' },
-        { id: 3, adresse: '789 Avenue des Champs', statut: 'en_attente' },
-      ]
-    })
+    fetchCollecte()
   }, [id])
 
-  if (loading || !tournee) return <LoadingState message="Chargement des détails..." />
+  const fetchCollecte = async () => {
+    try {
+      const response = await collecteAPI.getById(id)
+      setCollecte(response.data)
+    } catch (error) {
+      console.error('Error fetching collecte:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleStart = async () => {
+    try {
+      await collecteAPI.update(id, { statut: 'en_cours', date_debut: new Date() })
+      fetchCollecte()
+    } catch (error) {
+      console.error('Error starting collecte:', error)
+    }
+  }
+
+  const handleComplete = async () => {
+    try {
+      await collecteAPI.complete(id)
+      fetchCollecte()
+    } catch (error) {
+      console.error('Error completing collecte:', error)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Spinner size="lg" />
+      </div>
+    )
+  }
+
+  if (!collecte) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-accent-500">Collecte non trouvée</p>
+        <Button variant="outline" className="mt-4" onClick={() => navigate('/chauffeur')}>
+          Retour
+        </Button>
+      </div>
+    )
+  }
+
+  const getStatusLabel = (statut) => {
+    const labels = {
+      planifiee: 'Planifiée',
+      en_cours: 'En cours',
+      terminee: 'Terminée',
+      annulee: 'Annulée',
+    }
+    return labels[statut] || statut
+  }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="p-6"
-    >
-      <Button variant="ghost" size="sm" className="mb-6">
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Retour
-      </Button>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Informations camion */}
-        <div className="lg:col-span-2">
-          <Card className="mb-6">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{tournee.immatriculation}</h1>
-                <p className="text-gray-600">{tournee.marque} {tournee.modele}</p>
-              </div>
-              <Badge>{tournee.statut}</Badge>
-            </div>
-
-            {/* Capacité */}
-            <div className="mb-6">
-              <h3 className="font-semibold text-gray-900 mb-2">Charge</h3>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-600">{tournee.charge_actuelle} kg / {tournee.capacite} kg</span>
-                <span className="font-semibold">{Math.round((tournee.charge_actuelle / tournee.capacite) * 100)}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div 
-                  className="bg-green-500 h-3 rounded-full transition-all"
-                  style={{ width: `${(tournee.charge_actuelle / tournee.capacite) * 100}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Carte */}
-            <div className="mb-6 bg-gray-100 rounded-lg overflow-hidden h-64">
-              <MapContainer 
-                center={[tournee.latitude, tournee.longitude]} 
-                zoom={13} 
-                className="h-full w-full"
-              >
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution='&copy; OpenStreetMap'
-                />
-              </MapContainer>
-            </div>
-          </Card>
-
-          {/* Collectes */}
-          <Card>
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Collectes prévues</h3>
-            <div className="space-y-3">
-              {tournee.collectes.map((collecte, idx) => (
-                <div key={collecte.id} className="flex items-start gap-4 p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-shrink-0">
-                    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-green-500 text-white">
-                      {idx + 1}
-                    </div>
-                  </div>
-                  <div className="flex-grow">
-                    <p className="font-semibold text-gray-900">{collecte.adresse}</p>
-                    <Badge>{collecte.statut}</Badge>
-                  </div>
-                  <Button variant="ghost" size="sm">
-                    <MapPin className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        {/* Sidebar */}
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <button onClick={() => navigate('/chauffeur')} className="p-2 rounded-lg hover:bg-accent-100">
+          <ArrowLeft className="w-5 h-5 text-accent-600" />
+        </button>
         <div>
-          <Card className="sticky top-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
-            <div className="space-y-3">
-              <Button variant="primary" className="w-full">
-                <Clock className="w-4 h-4 mr-2" />
-                Démarrer collecte
-              </Button>
-              <Button variant="secondary" className="w-full">
-                <MapPin className="w-4 h-4 mr-2" />
-                Itinéraire optimal
-              </Button>
-              <Button variant="secondary" className="w-full">
-                <Truck className="w-4 h-4 mr-2" />
-                Marquer comme complète
-              </Button>
-            </div>
-          </Card>
+          <h1 className="text-2xl font-bold text-accent-900">Détail de la tournée</h1>
+          <p className="text-accent-500 mt-1">Collecte du {new Date(collecte.date_planifiee).toLocaleDateString('fr-FR')}</p>
         </div>
       </div>
-    </motion.div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Carte */}
+        <div className="lg:col-span-2">
+          <Card className="overflow-hidden">
+            <div className="h-96 relative">
+              <CarteSignalements signalements={collecte.signalements || []} />
+              {showRoute && collecte.itineraire && (
+                <ItineraireOverlay route={collecte.itineraire} camion={collecte.camion} />
+              )}
+            </div>
+            <div className="p-4 border-t border-accent-200 flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setShowRoute(!showRoute)}>
+                <Navigation className="w-4 h-4 mr-2" />
+                {showRoute ? 'Cacher' : 'Afficher'} l'itinéraire
+              </Button>
+            </div>
+          </Card>
+        </div>
+
+        {/* Informations */}
+        <div className="space-y-4">
+          <Card>
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <p className="text-sm text-accent-500">Statut</p>
+                <Badge variant={
+                  collecte.statut === 'planifiee' ? 'info' :
+                  collecte.statut === 'en_cours' ? 'warning' : 'success'
+                }>
+                  {getStatusLabel(collecte.statut)}
+                </Badge>
+              </div>
+              <Truck className="w-8 h-8 text-accent-400" />
+            </div>
+
+            <div className="space-y-3 mb-6">
+              <div>
+                <p className="text-sm text-accent-500">Camion</p>
+                <p className="font-semibold">{collecte.camion?.immatriculation || 'Non assigné'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-accent-500">Zone</p>
+                <p className="font-semibold">{collecte.zone?.nom || 'Non définie'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-accent-500">Date planifiée</p>
+                <p className="font-semibold">{new Date(collecte.date_planifiee).toLocaleDateString('fr-FR')}</p>
+              </div>
+              {collecte.distance_km && (
+                <div>
+                  <p className="text-sm text-accent-500">Distance totale</p>
+                  <p className="font-semibold">{collecte.distance_km} km</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-4 border-t">
+              {collecte.statut === 'planifiee' && (
+                <Button className="flex-1" onClick={handleStart}>
+                  Démarrer la tournée
+                </Button>
+              )}
+              {collecte.statut === 'en_cours' && (
+                <Button className="flex-1" onClick={handleComplete}>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Terminer
+                </Button>
+              )}
+            </div>
+          </Card>
+
+          {/* Points de collecte */}
+          {collecte.signalements && collecte.signalements.length > 0 && (
+            <Card>
+              <h3 className="font-semibold text-accent-900 mb-3">
+                Points à collecter ({collecte.signalements.length})
+              </h3>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {collecte.signalements.map((signal, idx) => (
+                  <div key={signal.id} className="flex items-start gap-2 p-2 hover:bg-accent-50 rounded-lg">
+                    <div className="w-6 h-6 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-xs font-bold">
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{signal.description?.substring(0, 40)}</p>
+                      <p className="text-xs text-accent-400">{signal.adresse}</p>
+                    </div>
+                    <MapPin className="w-4 h-4 text-accent-400 flex-shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
+
+export default DetailTournee
